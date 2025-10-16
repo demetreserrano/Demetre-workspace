@@ -10,14 +10,16 @@
 <style>
 :root{--bg:#0f1015;--card:#171a23;--border:#262b3d;--text:#fff;--muted:#a0a7bb;--accent:#7fe3ff;--ok:#8df7a6;}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif}
+html, body { min-height: 100%; height: auto; }
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;background-attachment:local}
 .header{position:sticky;top:0;background:#0f1015f2;backdrop-filter:blur(6px);padding:14px 16px;border-bottom:1px solid var(--border)}
 h1{margin:0;font-size:20px}
-.tabs{display:flex;gap:8px;margin-top:8px}
+.tabs{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;row-gap:6px}
 .tab{flex:1;text-align:center;padding:10px;border:1px solid var(--border);border-radius:12px;background:#1a1f2e}
 .tab.active{background:#21263a}
 .container{padding:16px;max-width:980px;margin:0 auto}
-.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:12px}
+.tabpane{min-height:100%}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:12px;overflow:visible}
 .card h2{margin:0 0 8px 0;font-size:16px}
 .small{color:var(--muted);font-size:13px}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
@@ -33,9 +35,18 @@ h1{margin:0;font-size:20px}
 .kbd{font-family:ui-monospace,Menlo,Consolas,monospace;background:#121627;border:1px solid var(--border);border-radius:8px;padding:2px 6px;color:#cfd3ff}
 .timer{font-variant-numeric:tabular-nums;font-size:28px}
 hr{border:0;border-top:1px solid var(--border);margin:10px 0}
-table{width:100%;border-collapse:collapse}
+table{width:100%;border-collapse:collapse;table-layout:auto}
 th,td{border-bottom:1px solid var(--border);padding:8px;text-align:left;font-size:14px}
 .row-right{margin-left:auto}
+
+/* Responsive: avoid text overflow and ensure backgrounds cover content */
+@media (max-width: 820px){
+  .grid.cols-2, .grid.cols-3 { grid-template-columns: 1fr; }
+  .container { padding: 12px; }
+  table { display:block; overflow-x:auto; -webkit-overflow-scrolling: touch; }
+  th, td { white-space: nowrap; }
+  .header { padding-bottom: 10px; }
+}
 </style>
 </head>
 <body>
@@ -215,9 +226,8 @@ document.querySelectorAll('.tab').forEach(t=>{
 // Storage helpers
 const LS = { get:(k,d)=>{ try{ return JSON.parse(localStorage.getItem(k)) ?? d }catch(_){ return d } }, set:(k,v)=>localStorage.setItem(k, JSON.stringify(v)) };
 
-// Default library (only using user's gear)
+// Default exercises (full-body with your equipment)
 const defaultExercises = [
-  // Chest (DB/Cable/Smith/Bodyweight)
   {name:'DB Flat Press', equip:'Dumbbell', muscle:'Chest', notes:'Shoulder blades retracted; slight arch.'},
   {name:'DB Incline Press', equip:'Dumbbell', muscle:'Chest', notes:'15–30° incline, touch low chest.'},
   {name:'DB Fly (floor/bench)', equip:'Dumbbell', muscle:'Chest', notes:'Soft elbow; stretch gently.'},
@@ -225,19 +235,16 @@ const defaultExercises = [
   {name:'Cable Press', equip:'Cable', muscle:'Chest', notes:'Neutral grip; constant tension.'},
   {name:'Smith Flat Press', equip:'Smith', muscle:'Chest', notes:'Wrist stacked; bar path lower chest.'},
   {name:'Push-Up', equip:'Bodyweight', muscle:'Chest', notes:'Core tight; full ROM.'},
-  // Back (DB/Cable/Smith/Bodyweight)
   {name:'One-Arm DB Row', equip:'Dumbbell', muscle:'Back', notes:'Pull elbow to hip; lat focus.'},
   {name:'DB Row (2-arm, chest-supported optional)', equip:'Dumbbell', muscle:'Back', notes:'Neutral spine; pause at top.'},
   {name:'Cable Seated Row', equip:'Cable', muscle:'Back', notes:'Neutral grip; squeeze mid-back.'},
   {name:'Cable Lat Pulldown (kneeling)', equip:'Cable', muscle:'Back', notes:'Elbows down; avoid shrug.'},
   {name:'Straight-Arm Cable Pulldown', equip:'Cable', muscle:'Back', notes:'Hinge; long lats; ribs down.'},
-  {name:'Inverted Row (Smith)', equip:'Smith', muscle:'Back', notes:'Body rigid; adjust height for diff.'},
-  // Shoulders
+  {name:'Inverted Row (Smith)', equip:'Smith', muscle:'Back', notes:'Body rigid; adjust height.'},
   {name:'DB Overhead Press', equip:'Dumbbell', muscle:'Shoulders', notes:'Glutes tight; avoid overextension.'},
   {name:'DB Lateral Raise', equip:'Dumbbell', muscle:'Shoulders', notes:'Soft elbows; lead with elbows.'},
   {name:'DB Rear Delt Fly (hinge)', equip:'Dumbbell', muscle:'Shoulders', notes:'Thumbs slightly in; sweep wide.'},
   {name:'Cable Lateral Raise (single)', equip:'Cable', muscle:'Shoulders', notes:'Cross-body start for ROM.'},
-  // Arms
   {name:'DB Curl', equip:'Dumbbell', muscle:'Biceps', notes:'Elbows pinned; full supination.'},
   {name:'Incline DB Curl', equip:'Dumbbell', muscle:'Biceps', notes:'Arms behind torso; stretch biceps.'},
   {name:'Cable Curl (EZ/straight)', equip:'Cable', muscle:'Biceps', notes:'Elbows fixed; squeeze.'},
@@ -245,7 +252,6 @@ const defaultExercises = [
   {name:'DB Skullcrusher (floor/bench)', equip:'Dumbbell', muscle:'Triceps', notes:'Elbows tucked; slight arm angle.'},
   {name:'Cable Pressdown (rope)', equip:'Cable', muscle:'Triceps', notes:'Spread rope at bottom.'},
   {name:'Overhead Cable Triceps Ext.', equip:'Cable', muscle:'Triceps', notes:'Big stretch; ribs down.'},
-  // Legs (from earlier)
   {name:'Smith Machine Squat', equip:'Smith', muscle:'Quads', notes:'Feet slightly forward; full depth.'},
   {name:'Smith Reverse Lunge', equip:'Smith', muscle:'Glutes', notes:'Step back; vertical shin.'},
   {name:'Smith Calf Raise', equip:'Smith', muscle:'Calves', notes:'Pause at top.'},
@@ -257,11 +263,9 @@ const defaultExercises = [
   {name:'Cable Leg Extension (single)', equip:'Cable', muscle:'Quads', notes:'Light; control.'},
   {name:'Cable Hamstring Curl (standing)', equip:'Cable', muscle:'Hamstrings', notes:'Slow eccentric.'},
   {name:'Standing Adduction', equip:'Cable', muscle:'Adductors', notes:'Stabilize core.'},
-  // Core
   {name:'Cable Pallof Press', equip:'Cable', muscle:'Core', notes:'Anti-rotation; squeeze glutes.'},
   {name:'Cable Woodchop (high→low)', equip:'Cable', muscle:'Core', notes:'Rotate hips; ribs down.'},
   {name:'Plank', equip:'Bodyweight', muscle:'Core', notes:'Glutes tight; neutral neck.'},
-  // Cardio
   {name:'Stepper – Intervals', equip:'Stepper', muscle:'Cardio', notes:'1 min fast / 1 min recover ×10.'},
   {name:'Treadmill – Incline Walk', equip:'Treadmill', muscle:'Cardio', notes:'10–12% incline @ 3.5–4 mph.'},
   {name:'Elliptical – Steady', equip:'Elliptical', muscle:'Cardio', notes:'20 min moderate.'}
@@ -431,7 +435,6 @@ function importFromText(){
   const txt = document.getElementById('import-text').value||'';
   const lines = txt.split(/\n|;|•|-/).map(x=>x.trim()).filter(Boolean);
   if(!lines.length){ alert('Paste some workout lines first'); return; }
-  // Patterns: "Name — 4x8–10 @RPE 8 (tempo 3-1-1) [notes...]"
   const rx = /^(.*?)[–—:]\s*(\d+)\s*[x×]\s*([0-9–\-]+[a-zA-Z0-9\/\s]*)\s*(.*)$/i;
   let added=0;
   lines.forEach(line=>{
@@ -444,7 +447,6 @@ function importFromText(){
       tempRoutine.push({name, sets, reps, notes});
       added++;
     } else {
-      // Fallback: "Name 3x12" or just name
       const rx2 = /^(.*?)\s+(\d+)\s*[x×]\s*([0-9–\-]+.*)$/i;
       const m2 = rx2.exec(line);
       if(m2){
@@ -504,7 +506,6 @@ function renderRun(){
       <button class="btn" onclick="cancelRun()">Cancel</button>
     </div>`;
   wrap.appendChild(btn);
-  // attach handlers
   wrap.querySelectorAll('.setbox').forEach(b=>b.addEventListener('change', e=>{
     const x = +e.target.getAttribute('data-x'); const s = +e.target.getAttribute('data-s');
     const S2 = LS.get('runState', null); S2.items[x].done[s]=e.target.checked; LS.set('runState', S2);
