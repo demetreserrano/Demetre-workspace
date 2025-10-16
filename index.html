@@ -1,0 +1,605 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#111111"/>
+<title>Training Coach</title>
+<style>
+:root{--bg:#0f1015;--card:#171a23;--border:#262b3d;--text:#fff;--muted:#a0a7bb;--accent:#7fe3ff;--ok:#8df7a6;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif}
+.header{position:sticky;top:0;background:#0f1015f2;backdrop-filter:blur(6px);padding:14px 16px;border-bottom:1px solid var(--border)}
+h1{margin:0;font-size:20px}
+.tabs{display:flex;gap:8px;margin-top:8px}
+.tab{flex:1;text-align:center;padding:10px;border:1px solid var(--border);border-radius:12px;background:#1a1f2e}
+.tab.active{background:#21263a}
+.container{padding:16px;max-width:980px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:12px}
+.card h2{margin:0 0 8px 0;font-size:16px}
+.small{color:var(--muted);font-size:13px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.input, select, textarea{background:#121627;border:1px solid var(--border);color:#fff;border-radius:10px;padding:8px 10px}
+.btn{padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#20263b;color:#fff}
+.btn:active{transform:scale(0.98)}
+.btn.accent{background:#1f2b46}
+.btn.green{background:#1f3a2a}
+.grid{display:grid;gap:10px}
+.grid.cols-2{grid-template-columns:1fr 1fr}
+.grid.cols-3{grid-template-columns:1fr 1fr 1fr}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;border:1px solid var(--border);background:#1c2234;font-size:12px;color:#cdd3ea}
+.kbd{font-family:ui-monospace,Menlo,Consolas,monospace;background:#121627;border:1px solid var(--border);border-radius:8px;padding:2px 6px;color:#cfd3ff}
+.timer{font-variant-numeric:tabular-nums;font-size:28px}
+hr{border:0;border-top:1px solid var(--border);margin:10px 0}
+table{width:100%;border-collapse:collapse}
+th,td{border-bottom:1px solid var(--border);padding:8px;text-align:left;font-size:14px}
+.row-right{margin-left:auto}
+</style>
+</head>
+<body>
+<header class="header">
+  <h1>Training Coach</h1>
+  <div class="tabs">
+    <div class="tab active" data-tab="library">Library</div>
+    <div class="tab" data-tab="builder">Builder</div>
+    <div class="tab" data-tab="today">Today</div>
+    <div class="tab" data-tab="log">Log</div>
+    <div class="tab" data-tab="settings">Settings</div>
+  </div>
+</header>
+
+<main class="container">
+  <!-- LIBRARY -->
+  <section id="library" class="tabpane">
+    <div class="card">
+      <h2>Exercise Library</h2>
+      <div class="small">Filtered to your gear: Smith • Dumbbells • Cable • Stepper • Treadmill • Elliptical • Bodyweight.</div>
+      <div class="grid cols-3" style="margin-top:10px">
+        <select id="filter-equip">
+          <option value="">Equipment (all)</option>
+          <option>Smith</option><option>Dumbbell</option><option>Cable</option>
+          <option>Stepper</option><option>Treadmill</option><option>Elliptical</option><option>Bodyweight</option>
+        </select>
+        <select id="filter-muscle">
+          <option value="">Muscle (all)</option>
+          <option>Chest</option><option>Back</option><option>Shoulders</option>
+          <option>Biceps</option><option>Triceps</option><option>Quads</option>
+          <option>Glutes</option><option>Hamstrings</option><option>Calves</option>
+          <option>Adductors</option><option>Core</option><option>Cardio</option>
+        </select>
+        <input id="filter-text" class="input" placeholder="Search name..."/>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn" onclick="resetFilters()">Reset</button>
+        <div class="row-right"></div>
+        <button class="btn accent" onclick="openNewExercise()">+ New Exercise</button>
+      </div>
+    </div>
+    <div class="card">
+      <div id="library-list"></div>
+    </div>
+  </section>
+
+  <!-- BUILDER -->
+  <section id="builder" class="tabpane" style="display:none">
+    <div class="card">
+      <h2>Routine Builder</h2>
+      <div class="small">Create routines from library or <strong>Import from Chat</strong>. Templates included.</div>
+      <div class="grid cols-2">
+        <div>
+          <label class="small">Routine Name</label>
+          <input id="r-name" class="input" placeholder="e.g., Push A / Back Day / Upper"/>
+        </div>
+        <div class="row" style="align-items:end">
+          <button class="btn green" onclick="saveRoutine()">Save Routine</button>
+          <select id="routine-select" class="input"></select>
+          <button class="btn" onclick="deleteRoutine()">Delete</button>
+        </div>
+      </div>
+      <hr/>
+      <div class="grid cols-2">
+        <div>
+          <h3 class="small">Add from Library</h3>
+          <div class="row">
+            <input id="lib-search" class="input" placeholder="Type to search..."/>
+            <button class="btn" onclick="refreshBuilderLibrary()">Search</button>
+          </div>
+          <div class="row" style="margin-top:6px">
+            <select id="template-select" class="input"></select>
+            <button class="btn" onclick="loadTemplate()">Load Template</button>
+          </div>
+          <div id="builder-lib" style="max-height:260px;overflow:auto;margin-top:6px"></div>
+        </div>
+        <div>
+          <h3 class="small">Import from Chat</h3>
+          <textarea id="import-text" class="input" rows="10" placeholder="Paste lines like:
+Incline DB Press — 4x8–10 @RPE 8 (tempo 3-1-1)
+Cable Row - 4x10
+DB Lateral Raise: 3x12–15
+Notes: finish with 10 min incline walk"></textarea>
+          <div class="row" style="margin-top:6px">
+            <button class="btn accent" onclick="importFromText()">Parse & Add</button>
+            <button class="btn" onclick="clearImport()">Clear</button>
+          </div>
+        </div>
+      </div>
+      <hr/>
+      <div>
+        <h3 class="small">Routine Exercises</h3>
+        <table id="routine-table">
+          <thead><tr><th>#</th><th>Name</th><th>Sets</th><th>Reps</th><th>Notes</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- TODAY -->
+  <section id="today" class="tabpane" style="display:none">
+    <div class="card">
+      <h2>Run a Routine</h2>
+      <div class="row">
+        <select id="run-select" class="input"></select>
+        <button class="btn green" onclick="startRun()">Load</button>
+        <div class="timer" id="rest-timer">00:45</div>
+        <button class="btn" onclick="startTimer('rest-timer', restSec())">Rest</button>
+        <button class="btn" onclick="resetTimer('rest-timer', restSec())">Reset</button>
+      </div>
+    </div>
+    <div id="run-wrap"></div>
+    <div class="card">
+      <h2>Cardio (optional)</h2>
+      <div class="row">
+        <select class="input" id="cardio-mode">
+          <option value="elliptical">Elliptical Steady 20:00</option>
+          <option value="incline">Treadmill Incline 20:00</option>
+          <option value="steps">Stepper HIIT 1:1 (10x)</option>
+        </select>
+        <button class="btn accent" onclick="startCardio()">Start</button>
+        <button class="btn" onclick="resetCardio()">Reset</button>
+        <div class="timer" id="cardio-timer">20:00</div>
+        <div id="cardio-cue" class="badge" style="display:none;margin-left:8px">Go!</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LOG -->
+  <section id="log" class="tabpane" style="display:none">
+    <div class="card">
+      <h2>Logs</h2>
+      <div id="log-list"></div>
+      <div class="row" style="margin-top:6px">
+        <button class="btn" onclick="exportData()">Export JSON</button>
+        <button class="btn" onclick="clearLog()">Clear Logs</button>
+      </div>
+      <textarea id="export-box" class="input" rows="8" style="width:100%;margin-top:8px" placeholder="Exported data..."></textarea>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="settings" class="tabpane" style="display:none">
+    <div class="card">
+      <h2>Settings</h2>
+      <div class="grid cols-2">
+        <div><label class="small">Rest (sec)</label><input id="rest-sec" class="input" type="number" min="20" max="180" value="45"/></div>
+        <div><label class="small">Warm-up (min)</label><input id="wu-min" class="input" type="number" min="3" max="10" value="5"/></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn green" onclick="saveSettings()">Save</button>
+        <button class="btn" onclick="resetSettings()">Reset</button>
+      </div>
+      <hr/>
+      <div class="small">Install via Chrome: ︙ → <span class="kbd">Add to Home screen</span>. Works offline.</div>
+    </div>
+  </section>
+</main>
+
+<script>
+// Tabs
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    const tab=t.dataset.tab;
+    document.querySelectorAll('.tabpane').forEach(p=>p.style.display='none');
+    document.getElementById(tab).style.display='block';
+    if(tab==='library') renderLibrary();
+    if(tab==='builder') { loadRoutineSelect(); loadTemplates(); refreshBuilderLibrary(); renderRoutineTable(); }
+    if(tab==='today') { loadRunSelect(); }
+    if(tab==='log') renderLog();
+  }
+});
+
+// Storage helpers
+const LS = { get:(k,d)=>{ try{ return JSON.parse(localStorage.getItem(k)) ?? d }catch(_){ return d } }, set:(k,v)=>localStorage.setItem(k, JSON.stringify(v)) };
+
+// Default library (only using user's gear)
+const defaultExercises = [
+  // Chest (DB/Cable/Smith/Bodyweight)
+  {name:'DB Flat Press', equip:'Dumbbell', muscle:'Chest', notes:'Shoulder blades retracted; slight arch.'},
+  {name:'DB Incline Press', equip:'Dumbbell', muscle:'Chest', notes:'15–30° incline, touch low chest.'},
+  {name:'DB Fly (floor/bench)', equip:'Dumbbell', muscle:'Chest', notes:'Soft elbow; stretch gently.'},
+  {name:'Cable Fly (high to low)', equip:'Cable', muscle:'Chest', notes:'Slight forward lean; cross & squeeze.'},
+  {name:'Cable Press', equip:'Cable', muscle:'Chest', notes:'Neutral grip; constant tension.'},
+  {name:'Smith Flat Press', equip:'Smith', muscle:'Chest', notes:'Wrist stacked; bar path lower chest.'},
+  {name:'Push-Up', equip:'Bodyweight', muscle:'Chest', notes:'Core tight; full ROM.'},
+  // Back (DB/Cable/Smith/Bodyweight)
+  {name:'One-Arm DB Row', equip:'Dumbbell', muscle:'Back', notes:'Pull elbow to hip; lat focus.'},
+  {name:'DB Row (2-arm, chest-supported optional)', equip:'Dumbbell', muscle:'Back', notes:'Neutral spine; pause at top.'},
+  {name:'Cable Seated Row', equip:'Cable', muscle:'Back', notes:'Neutral grip; squeeze mid-back.'},
+  {name:'Cable Lat Pulldown (kneeling)', equip:'Cable', muscle:'Back', notes:'Elbows down; avoid shrug.'},
+  {name:'Straight-Arm Cable Pulldown', equip:'Cable', muscle:'Back', notes:'Hinge; long lats; ribs down.'},
+  {name:'Inverted Row (Smith)', equip:'Smith', muscle:'Back', notes:'Body rigid; adjust height for diff.'},
+  // Shoulders
+  {name:'DB Overhead Press', equip:'Dumbbell', muscle:'Shoulders', notes:'Glutes tight; avoid overextension.'},
+  {name:'DB Lateral Raise', equip:'Dumbbell', muscle:'Shoulders', notes:'Soft elbows; lead with elbows.'},
+  {name:'DB Rear Delt Fly (hinge)', equip:'Dumbbell', muscle:'Shoulders', notes:'Thumbs slightly in; sweep wide.'},
+  {name:'Cable Lateral Raise (single)', equip:'Cable', muscle:'Shoulders', notes:'Cross-body start for ROM.'},
+  // Arms
+  {name:'DB Curl', equip:'Dumbbell', muscle:'Biceps', notes:'Elbows pinned; full supination.'},
+  {name:'Incline DB Curl', equip:'Dumbbell', muscle:'Biceps', notes:'Arms behind torso; stretch biceps.'},
+  {name:'Cable Curl (EZ/straight)', equip:'Cable', muscle:'Biceps', notes:'Elbows fixed; squeeze.'},
+  {name:'Cable Rope Hammer Curl', equip:'Cable', muscle:'Biceps', notes:'Neutral grip; forearms.'},
+  {name:'DB Skullcrusher (floor/bench)', equip:'Dumbbell', muscle:'Triceps', notes:'Elbows tucked; slight arm angle.'},
+  {name:'Cable Pressdown (rope)', equip:'Cable', muscle:'Triceps', notes:'Spread rope at bottom.'},
+  {name:'Overhead Cable Triceps Ext.', equip:'Cable', muscle:'Triceps', notes:'Big stretch; ribs down.'},
+  // Legs (from earlier)
+  {name:'Smith Machine Squat', equip:'Smith', muscle:'Quads', notes:'Feet slightly forward; full depth.'},
+  {name:'Smith Reverse Lunge', equip:'Smith', muscle:'Glutes', notes:'Step back; vertical shin.'},
+  {name:'Smith Calf Raise', equip:'Smith', muscle:'Calves', notes:'Pause at top.'},
+  {name:'DB Romanian Deadlift', equip:'Dumbbell', muscle:'Hamstrings', notes:'Hinge; hamstring stretch.'},
+  {name:'DB Goblet Squat', equip:'Dumbbell', muscle:'Quads', notes:'Knees track toes.'},
+  {name:'DB Walking Lunge', equip:'Dumbbell', muscle:'Glutes', notes:'Controlled; long stride.'},
+  {name:'Cable Bulgarian Split Squat', equip:'Cable', muscle:'Glutes', notes:'Constant tension.'},
+  {name:'Cable Kickback', equip:'Cable', muscle:'Glutes', notes:'1s squeeze.'},
+  {name:'Cable Leg Extension (single)', equip:'Cable', muscle:'Quads', notes:'Light; control.'},
+  {name:'Cable Hamstring Curl (standing)', equip:'Cable', muscle:'Hamstrings', notes:'Slow eccentric.'},
+  {name:'Standing Adduction', equip:'Cable', muscle:'Adductors', notes:'Stabilize core.'},
+  // Core
+  {name:'Cable Pallof Press', equip:'Cable', muscle:'Core', notes:'Anti-rotation; squeeze glutes.'},
+  {name:'Cable Woodchop (high→low)', equip:'Cable', muscle:'Core', notes:'Rotate hips; ribs down.'},
+  {name:'Plank', equip:'Bodyweight', muscle:'Core', notes:'Glutes tight; neutral neck.'},
+  // Cardio
+  {name:'Stepper – Intervals', equip:'Stepper', muscle:'Cardio', notes:'1 min fast / 1 min recover ×10.'},
+  {name:'Treadmill – Incline Walk', equip:'Treadmill', muscle:'Cardio', notes:'10–12% incline @ 3.5–4 mph.'},
+  {name:'Elliptical – Steady', equip:'Elliptical', muscle:'Cardio', notes:'20 min moderate.'}
+];
+
+function initExercises(){
+  if(!LS.get('exercises', null)){ LS.set('exercises', defaultExercises); }
+}
+initExercises();
+
+// Templates
+const templates = {
+  "Push (Chest/Shoulders/Triceps)":[
+    ['DB Incline Press',4,'8–12'],['Smith Flat Press',3,'8–10'],
+    ['DB Lateral Raise',3,'12–15'],['DB Overhead Press',3,'8–12'],
+    ['Cable Pressdown (rope)',3,'12–15']
+  ],
+  "Pull (Back/Biceps)":[
+    ['Cable Lat Pulldown (kneeling)',4,'8–12'],['Cable Seated Row',4,'8–12'],
+    ['Straight-Arm Cable Pulldown',3,'12–15'],['One-Arm DB Row',3,'10–12'],
+    ['Cable Curl (EZ/straight)',3,'10–12']
+  ],
+  "Legs (Smith/DB/Cable)":[
+    ['Smith Machine Squat',4,'10–12'],['DB Romanian Deadlift',4,'10–12'],
+    ['Cable Bulgarian Split Squat',3,'10/leg'],['Cable Kickback',3,'12–15/leg'],
+    ['DB Walking Lunge',3,'20 steps'],['Smith Calf Raise',3,'15–20']
+  ],
+  "Upper Body":[
+    ['DB Incline Press',3,'8–12'],['Cable Seated Row',3,'8–12'],
+    ['DB Overhead Press',3,'8–12'],['Cable Curl (EZ/straight)',3,'10–12'],
+    ['Cable Pressdown (rope)',3,'12–15']
+  ],
+  "Lower Body":[
+    ['Smith Machine Squat',4,'8–12'],['DB Romanian Deadlift',4,'8–12'],
+    ['DB Walking Lunge',3,'20 steps'],['Smith Calf Raise',3,'15–20']
+  ],
+  "Arms Focus":[
+    ['Cable Curl (EZ/straight)',3,'10–12'],['DB Curl',3,'10–12'],
+    ['Cable Rope Hammer Curl',3,'10–12'],['Cable Pressdown (rope)',3,'12–15'],
+    ['Overhead Cable Triceps Ext.',3,'10–12']
+  ],
+  "Shoulders Day":[
+    ['DB Overhead Press',4,'6–10'],['DB Lateral Raise',4,'12–15'],
+    ['Cable Lateral Raise (single)',3,'12–15/side'],['DB Rear Delt Fly (hinge)',3,'12–15']
+  ],
+  "Chest Day":[
+    ['DB Flat Press',4,'6–10'],['DB Incline Press',3,'8–12'],['Cable Fly (high to low)',3,'12–15']
+  ],
+  "Back Day":[
+    ['Cable Lat Pulldown (kneeling)',4,'8–12'],['Cable Seated Row',4,'8–12'],
+    ['One-Arm DB Row',3,'10–12'],['Straight-Arm Cable Pulldown',3,'12–15']
+  ],
+  "Full Body (Minimal)":[
+    ['DB Goblet Squat',3,'10–15'],['DB Flat Press',3,'8–12'],['One-Arm DB Row',3,'10–12'],
+    ['DB Overhead Press',2,'8–12'],['Plank',2,'45–60s']
+  ]
+};
+
+// LIBRARY
+function renderLibrary(){
+  const list = document.getElementById('library-list');
+  const fEquip = document.getElementById('filter-equip').value;
+  const fMuscle = document.getElementById('filter-muscle').value;
+  const fText = (document.getElementById('filter-text').value||'').toLowerCase();
+  const data = LS.get('exercises', [])
+    .filter(x=>!fEquip || x.equip===fEquip)
+    .filter(x=>!fMuscle || x.muscle===fMuscle)
+    .filter(x=>!fText || x.name.toLowerCase().includes(fText));
+  if(!data.length){ list.innerHTML='<div class="small">No matches. Adjust filters.</div>'; return; }
+  list.innerHTML = `<table><thead><tr><th>Exercise</th><th>Equipment</th><th>Muscle</th><th>Notes</th><th></th></tr></thead>
+  <tbody>${data.map((x,i)=>`
+    <tr>
+      <td>${x.name}</td><td>${x.equip}</td><td>${x.muscle}</td><td class="small">${x.notes||''}</td>
+      <td><button class="btn" onclick="addToBuilder('${escapeHtml(x.name)}')">Add</button></td>
+    </tr>`).join('')}</tbody></table>`;
+}
+function resetFilters(){
+  document.getElementById('filter-equip').value='';
+  document.getElementById('filter-muscle').value='';
+  document.getElementById('filter-text').value='';
+  renderLibrary();
+}
+function openNewExercise(){
+  const name = prompt('Exercise name:'); if(!name) return;
+  const equip = prompt('Equipment (Smith, Dumbbell, Cable, Stepper, Treadmill, Elliptical, Bodyweight):','Dumbbell')||'Dumbbell';
+  const muscle = prompt('Primary muscle (Chest, Back, Shoulders, Biceps, Triceps, Quads, Glutes, Hamstrings, Calves, Adductors, Core, Cardio):','Chest')||'Chest';
+  const notes = prompt('Coaching notes (optional):','')||'';
+  const ex = LS.get('exercises', []); ex.push({name, equip, muscle, notes}); LS.set('exercises', ex);
+  alert('Added to library'); renderLibrary(); refreshBuilderLibrary();
+}
+function addToBuilder(name){ document.querySelector('[data-tab="builder"]').click(); addToRoutine(name); }
+
+// BUILDER
+const tempRoutine=[];
+function loadTemplates(){
+  const s = document.getElementById('template-select');
+  const keys = Object.keys(templates);
+  s.innerHTML = `<option value="">Select a template</option>` + keys.map(k=>`<option>${k}</option>`).join('');
+}
+function loadTemplate(){
+  const key = document.getElementById('template-select').value; if(!key) return;
+  tempRoutine.length=0;
+  templates[key].forEach(([name,sets,reps])=> tempRoutine.push({name, sets, reps, notes:''}));
+  document.getElementById('r-name').value = key;
+  renderRoutineTable();
+}
+function loadRoutineSelect(){
+  const s = document.getElementById('routine-select');
+  const routines = LS.get('routines', {});
+  const keys = Object.keys(routines);
+  s.innerHTML = `<option value="">Select saved routine</option>` + keys.map(k=>`<option>${k}</option>`).join('');
+  if(!document.getElementById('r-name').value) document.getElementById('r-name').value = '';
+}
+function refreshBuilderLibrary(){
+  const query = (document.getElementById('lib-search').value||'').toLowerCase();
+  const ex = LS.get('exercises', []);
+  const list = ex.filter(x=>x.name.toLowerCase().includes(query));
+  const wrap = document.getElementById('builder-lib');
+  if(!list.length){ wrap.innerHTML = '<div class="small">No results.</div>'; return; }
+  wrap.innerHTML = list.map(x=>`
+    <div class="row" style="justify-content:space-between;border-bottom:1px solid var(--border);padding:6px 0">
+      <div><strong>${x.name}</strong> <span class="small">• ${x.equip} • ${x.muscle}</span><br/><span class="small">${x.notes||''}</span></div>
+      <button class="btn" onclick="addToRoutine('${escapeHtml(x.name)}')">Add</button>
+    </div>
+  `).join('');
+}
+function addToRoutine(name){ tempRoutine.push({name, sets:3, reps:'10–12', notes:''}); renderRoutineTable(); }
+function removeFromRoutine(idx){ tempRoutine.splice(idx,1); renderRoutineTable(); }
+function renderRoutineTable(){
+  const tb = document.querySelector('#routine-table tbody');
+  if(!tempRoutine.length){ tb.innerHTML = `<tr><td colspan="6" class="small">No exercises yet — add from library, use a template, or import from chat.</td></tr>`; return; }
+  tb.innerHTML = tempRoutine.map((e,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td>${e.name}</td>
+      <td><input type="number" class="input" style="width:70px" value="${e.sets}" onchange="editSet(${i}, this.value)"/></td>
+      <td><input class="input" style="width:90px" value="${e.reps}" onchange="editReps(${i}, this.value)"/></td>
+      <td><input class="input" style="width:100%" value="${e.notes||''}" onchange="editNotes(${i}, this.value)"/></td>
+      <td><button class="btn" onclick="removeFromRoutine(${i})">Remove</button></td>
+    </tr>
+  `).join('');
+}
+function editSet(i,v){ tempRoutine[i].sets = Math.max(1, parseInt(v)||3); }
+function editReps(i,v){ tempRoutine[i].reps = v; }
+function editNotes(i,v){ tempRoutine[i].notes = v; }
+function saveRoutine(){
+  const name = document.getElementById('r-name').value.trim();
+  if(!name){ alert('Enter a routine name'); return; }
+  if(!tempRoutine.length){ alert('Add at least one exercise'); return; }
+  const routines = LS.get('routines', {}); routines[name]=JSON.parse(JSON.stringify(tempRoutine)); LS.set('routines', routines);
+  alert('Routine saved'); tempRoutine.length=0; renderRoutineTable(); loadRoutineSelect(); loadRunSelect();
+}
+function deleteRoutine(){
+  const key = document.getElementById('routine-select').value; if(!key){ alert('Select a routine to delete'); return; }
+  const routines = LS.get('routines', {}); delete routines[key]; LS.set('routines', routines);
+  alert('Deleted'); loadRoutineSelect(); loadRunSelect();
+}
+document.getElementById('routine-select').addEventListener('change', (e)=>{
+  const key = e.target.value; if(!key) return;
+  const routines = LS.get('routines', {}); const r = routines[key]||[];
+  tempRoutine.length=0; r.forEach(x=>tempRoutine.push({...x}));
+  document.getElementById('r-name').value = key; renderRoutineTable();
+});
+
+function clearImport(){ document.getElementById('import-text').value=''; }
+function importFromText(){
+  const txt = document.getElementById('import-text').value||'';
+  const lines = txt.split(/\n|;|•|-/).map(x=>x.trim()).filter(Boolean);
+  if(!lines.length){ alert('Paste some workout lines first'); return; }
+  // Patterns: "Name — 4x8–10 @RPE 8 (tempo 3-1-1) [notes...]"
+  const rx = /^(.*?)[–—:]\s*(\d+)\s*[x×]\s*([0-9–\-]+[a-zA-Z0-9\/\s]*)\s*(.*)$/i;
+  let added=0;
+  lines.forEach(line=>{
+    let m = rx.exec(line);
+    if(m){
+      const name = m[1].trim();
+      const sets = parseInt(m[2].trim())||3;
+      const reps = m[3].trim();
+      const notes = m[4].trim();
+      tempRoutine.push({name, sets, reps, notes});
+      added++;
+    } else {
+      // Fallback: "Name 3x12" or just name
+      const rx2 = /^(.*?)\s+(\d+)\s*[x×]\s*([0-9–\-]+.*)$/i;
+      const m2 = rx2.exec(line);
+      if(m2){
+        tempRoutine.push({name:m2[1].trim(), sets:parseInt(m2[2])||3, reps:m2[3].trim(), notes:''}); added++;
+      } else {
+        tempRoutine.push({name:line, sets:3, reps:'10–12', notes:''}); added++;
+      }
+    }
+  });
+  renderRoutineTable(); alert(`Imported ${added} item(s)`);
+}
+
+// TODAY (Runner)
+function loadRunSelect(){
+  const s = document.getElementById('run-select');
+  const routines = LS.get('routines', {});
+  const keys = Object.keys(routines);
+  s.innerHTML = `<option value="">Pick a routine</option>` + keys.map(k=>`<option>${k}</option>`).join('');
+}
+function startRun(){
+  const key = document.getElementById('run-select').value;
+  if(!key){ alert('Pick a routine'); return; }
+  const routines = LS.get('routines', {});
+  const r = routines[key]||[];
+  const wrap = document.getElementById('run-wrap');
+  const today = new Date().toISOString().slice(0,10);
+  const state = {date:today, name:key, items:r.map(it=>({name:it.name, sets:it.sets, reps:it.reps, notes:it.notes, done:Array(it.sets).fill(false), weights:Array(it.sets).fill('')}))};
+  LS.set('runState', state);
+  renderRun();
+}
+function renderRun(){
+  const wrap = document.getElementById('run-wrap');
+  const S = LS.get('runState', null);
+  if(!S){ wrap.innerHTML=''; return; }
+  wrap.innerHTML = `<div class="card"><h2>${S.name} — ${S.date}</h2>
+    <div class="small">Tap a set when done. Add weights (optional).</div></div>`;
+  S.items.forEach((it, idx)=>{
+    const card = document.createElement('div'); card.className='card';
+    card.innerHTML = `
+      <div class="row" style="justify-content:space-between">
+        <div><div class="badge">#${idx+1}</div> <strong>${it.name}</strong> <span class="small">• ${it.sets} sets • ${it.reps}</span></div>
+      </div>
+      ${it.notes?`<div class="small" style="margin:6px 0">${it.notes}</div>`:''}
+      <div class="grid cols-3" style="margin-top:8px">
+        ${it.done.map((d,i)=>`
+        <div class="row">
+          <input type="checkbox" ${d?'checked':''} data-x="${idx}" data-s="${i}" class="setbox"/>
+          <input type="number" inputmode="decimal" placeholder="wt" class="input" style="width:80px" value="${it.weights[i]||''}" data-xw="${idx}" data-sw="${i}"/>
+          <span class="small">Set ${i+1}</span>
+        </div>`).join('')}
+      </div>`;
+    wrap.appendChild(card);
+  });
+  const btn = document.createElement('div'); btn.className='card'; btn.innerHTML=`
+    <div class="row">
+      <button class="btn green" onclick="finishRun()">Save Session</button>
+      <button class="btn" onclick="cancelRun()">Cancel</button>
+    </div>`;
+  wrap.appendChild(btn);
+  // attach handlers
+  wrap.querySelectorAll('.setbox').forEach(b=>b.addEventListener('change', e=>{
+    const x = +e.target.getAttribute('data-x'); const s = +e.target.getAttribute('data-s');
+    const S2 = LS.get('runState', null); S2.items[x].done[s]=e.target.checked; LS.set('runState', S2);
+  }));
+  wrap.querySelectorAll('input[data-xw]').forEach(inp=>inp.addEventListener('input', e=>{
+    const x = +e.target.getAttribute('data-xw'); const s = +e.target.getAttribute('data-sw');
+    const S2 = LS.get('runState', null); S2.items[x].weights[s]=e.target.value; LS.set('runState', S2);
+  }));
+}
+function finishRun(){
+  const S = LS.get('runState', null); if(!S){ alert('Nothing to save'); return; }
+  const logs = LS.get('logs', []); logs.unshift(S); LS.set('logs', logs.slice(0,30)); LS.set('runState', null);
+  alert('Session saved'); renderRun(); renderLog();
+}
+function cancelRun(){ LS.set('runState', null); renderRun(); }
+
+// Cardio timers
+let cardioInterval=null, cardioLeft=1200;
+function startCardio(){
+  const mode = document.getElementById('cardio-mode').value;
+  if(cardioInterval) clearInterval(cardioInterval);
+  cardioLeft=1200; updateTimerDisplay('cardio-timer', cardioLeft);
+  const cue = document.getElementById('cardio-cue');
+  cue.style.display = (mode==='steps')?'inline-block':'none';
+  cardioInterval = setInterval(()=>{
+    cardioLeft--; updateTimerDisplay('cardio-timer', cardioLeft);
+    if(mode==='steps'){
+      const sec = 1200 - cardioLeft;
+      const inBlock = sec % 120;
+      const fast = inBlock < 60;
+      cue.textContent = fast ? 'Fast (1 min)' : 'Recover (1 min)';
+      cue.style.background = fast ? '#1e2a44' : '#1e3524';
+    }
+    if(cardioLeft<=0){ clearInterval(cardioInterval); alert('Cardio done'); }
+  },1000);
+}
+function resetCardio(){ if(cardioInterval) clearInterval(cardioInterval); cardioLeft=1200; updateTimerDisplay('cardio-timer', cardioLeft); document.getElementById('cardio-cue').style.display='none'; }
+
+// Timers & settings
+const timers={};
+function startTimer(id, seconds){
+  if(timers[id]) clearInterval(timers[id]);
+  let left=seconds; updateTimerDisplay(id,left);
+  timers[id]=setInterval(()=>{ left--; updateTimerDisplay(id,left); if(left<=0) clearInterval(timers[id]); },1000);
+}
+function resetTimer(id, seconds){ if(timers[id]) clearInterval(timers[id]); updateTimerDisplay(id,seconds); }
+function updateTimerDisplay(id, sec){
+  const m = Math.floor(sec/60).toString().padStart(2,'0');
+  const s = Math.floor(sec%60).toString().padStart(2,'0');
+  const el = document.getElementById(id); if(el) el.textContent = `${m}:${s}`;
+}
+function restSec(){ return parseInt(document.getElementById('rest-sec').value)||45; }
+
+// Logs
+function renderLog(){
+  const list = document.getElementById('log-list');
+  const logs = LS.get('logs', []);
+  if(!logs.length){ list.innerHTML='<div class="small">No logs yet.</div>'; return; }
+  list.innerHTML = logs.map(L=>{
+    const items = (L.items||[]).map(i=>`${i.name}: ${i.done.filter(Boolean).length}/${i.sets} sets`).join('<br/>');
+    return `<div class="card"><strong>${L.date}</strong> • ${L.name}<div class="small" style="margin-top:6px">${items}</div></div>`;
+  }).join('');
+}
+function exportData(){
+  const data = {
+    exercises: LS.get('exercises', []),
+    routines: LS.get('routines', {}),
+    logs: LS.get('logs', []),
+    settings: LS.get('settings', {})
+  };
+  document.getElementById('export-box').value = JSON.stringify(data, null, 2);
+}
+function clearLog(){ if(confirm('Clear all logs?')){ LS.set('logs', []); renderLog(); } }
+
+// Settings
+function loadSettings(){
+  const s = LS.get('settings', {rest:45, wu:5});
+  document.getElementById('rest-sec').value = s.rest;
+  document.getElementById('wu-min').value = s.wu;
+  resetTimer('rest-timer', s.rest);
+}
+function saveSettings(){
+  const rest = parseInt(document.getElementById('rest-sec').value)||45;
+  const wu = parseInt(document.getElementById('wu-min').value)||5;
+  LS.set('settings', {rest, wu}); resetTimer('rest-timer', rest); alert('Saved');
+}
+function resetSettings(){ LS.set('settings', {rest:45, wu:5}); loadSettings(); }
+
+// Utils
+function escapeHtml(s){ return s.replace(/["'`\\]/g, m=>'\\'+m); }
+
+// Init
+if('serviceWorker' in navigator){ window.addEventListener('load', ()=> navigator.serviceWorker.register('sw.js')); }
+loadSettings();
+renderLibrary();
+</script>
+</body>
+</html>
